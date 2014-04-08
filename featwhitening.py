@@ -63,14 +63,16 @@ class FeatureWhitening:
 
             #with Timer('Building C'):
             yoff, xoff = np.meshgrid( range(patchSize[0]), range(patchSize[1]), indexing='ij' )
-            xoff = np.reshape( xoff, n )
-            yoff = np.reshape( yoff, n )
+            xoff = np.reshape( xoff - patchSize[1]/2, n )
+            yoff = np.reshape( yoff - patchSize[0]/2, n )
 
             # vectorized version of the below written non-vectorized version
             e = np.ones([n,1])
             xd = np.outer( xoff, e.T ) - np.outer( e, xoff.T )
+            #print xd
             xd = np.reshape ( xd+mx, n*n )
             yd = np.outer( yoff, e.T ) - np.outer( e, yoff.T )
+            #print yd
             yd = np.reshape ( yd+my, n*n )
             C = np.reshape ( np.real(A[np.int_(yd),np.int_(xd)]), [n, n] )
 
@@ -92,29 +94,36 @@ class FeatureWhitening:
             print "This part of the code is still under development"
             
             yoff, xoff, zoff = np.meshgrid( range(patchSize[0]), range(patchSize[1]), range(A.shape[2]), indexing='ij' )
-            xoff = np.reshape( xoff, n )
-            yoff = np.reshape( yoff, n )
-            zoff = np.reshape( zoff, n )
-            print xoff
-            print yoff
+            xoff = np.reshape( xoff - patchSize[1]/2, n )
+            yoff = np.reshape( yoff - patchSize[0]/2, n )
+            mz = A.shape[2]/2
+            zoff = np.reshape( zoff - A.shape[2]/2, n )
+            #zoff = np.reshape( zoff, n )
+            #print xoff
+            #print yoff
             print zoff
 
-            mz = A.shape[2]/2
 
             C = np.zeros([n,n])
             
             # vectorized version of the below written non-vectorized version
             e = np.ones([n,1])
             xd = np.outer( xoff, e.T ) - np.outer( e, xoff.T )
-            print xd
+            #print xd
             xd = np.reshape ( xd+mx, n*n )
             yd = np.outer( yoff, e.T ) - np.outer( e, yoff.T )
-            print yd
+            #print yd
             yd = np.reshape ( yd+my, n*n )
             zd = np.outer( zoff, e.T ) - np.outer( e, zoff.T )
             print zd
             zd = np.reshape ( zd+mz, n*n )
+            zd[zd>=A.shape[2]] = zd[zd>=A.shape[2]] - A.shape[2]
+            print zd
 
+            print A.shape
+            # BUG: zd might be not correct
+            # There is something wrong here, the above equation is somehow weird, don't you think?
+            # And the results do not match
             C = np.reshape ( np.real(A[np.int_(yd),np.int_(xd),np.int_(zd)]), [n, n] )
 
 

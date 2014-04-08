@@ -20,11 +20,11 @@ else:
     imgfn = sys.argv[1]
 
 if len(sys.argv)<3:
-    patchSizes = list('1')
+    patchSizes = list('3')
 else:
     patchSizes = sys.argv[2:len(sys.argv)]
 
-
+checkTrivialSolution = True
 imgraw = pylab.imread(imgfn)
 img = (imgraw - np.mean(imgraw,axis=None)) / 255.0
 
@@ -39,17 +39,17 @@ for pss in patchSizes:
     fw = FeatureWhitening() 
     times = []
     with Timer('FFT Patch Correlation') as t:
-      C_eff = fw.getPatchCorrelation(img,patchSize)
-      times.append(t.elapsed())
+        C_eff = fw.getPatchCorrelation(img,patchSize)
+        times.append(t.elapsed())
 
     fwi = FeatureWhiteningInefficient() 
     with Timer('Non-Fourier Patch Correlation') as t:
-      C_ineff = fwi.getPatchCorrelation(img,patchSize)
-      times.append(t.elapsed())
+        C_ineff = fwi.getPatchCorrelation(img,patchSize)
+        times.append(t.elapsed())
 
-    #with Timer('Trivial Patch Correlation') as t:
-    #  C_triv = fwi.getPatchCorrelationTrivial(img,patchSize)
-    #  times.append(t.elapsed())
+    with Timer('Trivial Patch Correlation') as t:
+        C_triv = fwi.getPatchCorrelationTrivial(img,patchSize)
+        times.append(t.elapsed())
 
     fout.write('%d %f %f\n' % (ps, times[0], times[1]))
 
@@ -60,8 +60,9 @@ for pss in patchSizes:
         print C_eff
         print "correlation matrix (inefficient)"
         print C_ineff
-        #print "correlation matrix (trivial)"
-        #print C_triv
+        if checkTrivialSolution:
+            print "correlation matrix (trivial)"
+            print C_triv
 
     wimg_eff = fw.whitenImage(img)
     print "Correlation matrix after whitening:"
@@ -82,8 +83,9 @@ for pss in patchSizes:
     pylab.show()
 
     print "Relative error:", relativeError( C_eff, C_ineff ) 
-    #print "Relative error:", relativeError( C_eff, C_triv ) 
-    #print "Relative error:", relativeError( C_ineff, C_triv ) 
+    if checkTrivialSolution:
+        print "Relative error:", relativeError( C_eff, C_triv ) 
+        print "Relative error:", relativeError( C_ineff, C_triv ) 
 
 
 fout.close()

@@ -103,32 +103,62 @@ class FeatureWhiteningInefficient:
         w = img.shape[1]
         h = img.shape[0]
 
-        n = np.prod(patchSize)
         ps = np.floor(np.multiply(patchSize,0.5))
-        C = np.zeros([ n,n ])
+        
+        if img.ndim==2:
+            n = np.prod(patchSize)
+            C = np.zeros([ n,n ])
 
-        for (y,x),value in np.ndenumerate(img):
-            rx = range(x-int(ps[1]),x+int(ps[1])+1)
-            ry = range(y-int(ps[0]),y+int(ps[0])+1)
+            for (y,x),value in np.ndenumerate(img):
+                rx = range(x-int(ps[1]),x+int(ps[1])+1)
+                ry = range(y-int(ps[0]),y+int(ps[0])+1)
 
-            # cyclic model
-            for i in range(len(rx)):
-                if rx[i] < 0:
-                    rx[i] = rx[i] + w
-                elif rx[i] >= w:
-                    rx[i] = rx[i] - w
+                # cyclic model
+                for i in range(len(rx)):
+                    if rx[i] < 0:
+                        rx[i] = rx[i] + w
+                    elif rx[i] >= w:
+                        rx[i] = rx[i] - w
 
-            for i in range(len(ry)):
-                if ry[i] < 0:
-                    ry[i] = h + ry[i]
-                elif ry[i] >= h:
-                  ry[i] = ry[i] - h
+                for i in range(len(ry)):
+                    if ry[i] < 0:
+                        ry[i] = h + ry[i]
+                    elif ry[i] >= h:
+                      ry[i] = ry[i] - h
 
-            rry, rrx = np.meshgrid(ry, rx, indexing='ij')
+                rry, rrx = np.meshgrid(ry, rx, indexing='ij')
 
-            v = np.reshape( img[rry,rrx], n )
+                v = np.reshape( img[rry,rrx], n )
 
-            C = C + np.outer(v,v)
+                C = C + np.outer(v,v)
+        else:
+            n = np.prod(patchSize)*img.shape[2]
+            C = np.zeros([ n,n ])
+
+            rz = range(img.shape[2])
+            
+            for (y,x),value in np.ndenumerate(img[:,:,0]):
+                rx = range(x-int(ps[1]),x+int(ps[1])+1)
+                ry = range(y-int(ps[0]),y+int(ps[0])+1)
+
+                # cyclic model
+                for i in range(len(rx)):
+                    if rx[i] < 0:
+                        rx[i] = rx[i] + w
+                    elif rx[i] >= w:
+                        rx[i] = rx[i] - w
+
+                for i in range(len(ry)):
+                    if ry[i] < 0:
+                        ry[i] = h + ry[i]
+                    elif ry[i] >= h:
+                      ry[i] = ry[i] - h
+
+                rry, rrx, rrz = np.meshgrid(ry, rx, rz, indexing='ij')
+
+                v = np.reshape( img[rry,rrx,rrz], n )
+
+                C = C + np.outer(v,v)
 
         return C / (w*h)
 
