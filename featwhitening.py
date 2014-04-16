@@ -15,6 +15,11 @@ class FeatureWhitening:
 
     """ Whiten the image completely and directly """
     def whitenImage(self,img,patchSize=None):
+        """ This function directly performs the whitening by normalizing the power spectrum.
+            It is important to note that this whitening step is not equivalent to the whitening using
+            a correlation matrix, but related in the sense that for infinite dimensional correlation matrices, 
+            the operations are equivalent.
+        """
         ft = np.fft.fft2(img)
         powerspec_sqrt = np.sqrt ( np.multiply( np.conjugate(ft), ft ) )
         if patchSize != None:
@@ -34,12 +39,14 @@ class FeatureWhitening:
     """ Compute the power spectrum of an image """
     def computePowerSpec(self,img):
         if img.ndim==2:
-            # only one plane
+            # Only one plane
+            # The power spectrum is simply F * F~, where F~ is the conjugate of F, which is
+            # the Fourier spectrum
             ft = np.fft.fft2(img)
             powerspec = np.multiply( np.conjugate(ft), ft )
             A = np.fft.fftshift( np.fft.ifft2(powerspec) )
         else:
-            # more than one plane
+            # more than one plane, this code is still EXPERIMENTAL
             ft = np.fft.fftn(img)
             powerspec = np.multiply( np.conjugate(ft), ft )
             A = np.fft.fftshift( np.fft.ifftn(powerspec) )
@@ -50,6 +57,9 @@ class FeatureWhitening:
     """ Compute the correlation matrix of the patch """
     def getPatchCorrelation(self,img,patchSize):
         
+        """ This function computes the power spectrum of a single image and then computes the
+            correlation matrix based on this power spectrum. """
+
         #with Timer('Calculation of auto-correlation'):
         A = self.computePowerSpec(img)
             
