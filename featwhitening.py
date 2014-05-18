@@ -8,14 +8,12 @@ import pylab
 
 from timer import Timer
 
-"""
-    Performs whitening of patch features
-"""
 class FeatureWhitening:
-
-    """ Whiten the image completely and directly """
+    """ Performs whitening of patch features """
+    
     def whitenImage(self,img,patchSize=None):
-        """ This function directly performs the whitening by normalizing the power spectrum.
+        """ Whiten the image completely and directly 
+            This function directly performs the whitening by normalizing the power spectrum.
             It is important to note that this whitening step is not equivalent to the whitening using
             a correlation matrix, but related in the sense that for infinite dimensional correlation matrices, 
             the operations are equivalent.
@@ -36,8 +34,8 @@ class FeatureWhitening:
         
         return wimg * np.sqrt( np.prod(img.shape) )
 
-    """ Compute the power spectrum of an image """
     def computePowerSpec(self,img):
+        """ Compute the power spectrum of an image """
         if img.ndim==2:
             # Only one plane
             # The power spectrum is simply F * F~, where F~ is the conjugate of F, which is
@@ -47,6 +45,7 @@ class FeatureWhitening:
             A = np.fft.fftshift( np.fft.ifft2(powerspec) )
         else:
             # more than one plane, this code is still EXPERIMENTAL
+            # and might never been used 
             ft = np.fft.fftn(img)
             powerspec = np.multiply( np.conjugate(ft), ft )
             A = np.fft.fftshift( np.fft.ifftn(powerspec) )
@@ -54,23 +53,24 @@ class FeatureWhitening:
         return A
 
 
-    """ Compute the correlation matrix of the patch """
-    def getPatchCorrelation(self,img,patchSize):
-        
-        """ This function computes the power spectrum of a single image and then computes the
-            correlation matrix based on this power spectrum. """
+    def getPatchCorrelation(self,img,patchSize,approximation_method="blockdiagonal_approximation"):
+        """ Compute the correlation matrix of the patch 
+            This function computes the power spectrum of a single image and then computes the
+            correlation matrix based on this power spectrum. 
+        """
 
-        #with Timer('Calculation of auto-correlation'):
-        A = self.computePowerSpec(img)
-            
-        my = A.shape[0]/2
-        mx = A.shape[1]/2
+        # center point of the image 
+        my = img.shape[0]/2
+        mx = img.shape[1]/2
+        # number of pixels in a patch
+        n = np.prod(patchSize)
 
         # build a block Toeplitz matrix from the auto-correlation results
-        if A.ndim==2:
+        if img.ndim==2:
             # single plane only
-            n = np.prod(patchSize)
-
+            #with Timer('Calculation of auto-correlation'):
+            A = self.computePowerSpec(img)
+ 
             #with Timer('Building C'):
             yoff, xoff = np.meshgrid( range(patchSize[0]), range(patchSize[1]), indexing='ij' )
             xoff = np.reshape( xoff - patchSize[1]/2, n )
@@ -79,12 +79,11 @@ class FeatureWhitening:
             # vectorized version of the below written non-vectorized version
             e = np.ones([n,1])
             xd = np.outer( xoff, e.T ) - np.outer( e, xoff.T )
-            #print xd
             xd = np.reshape ( xd+mx, n*n )
             yd = np.outer( yoff, e.T ) - np.outer( e, yoff.T )
-            #print yd
             yd = np.reshape ( yd+my, n*n )
             C = np.reshape ( np.real(A[np.int_(yd),np.int_(xd)]), [n, n] )
+            C = C / np.prod(A.shape)
 
             #with Timer('Non-vectorized version'):
             #  C = np.zeros([n,n])
@@ -99,59 +98,45 @@ class FeatureWhitening:
         
         else:
             # multiple plane case
-            n = np.prod(patchSize) * A.shape[2]
+            numPlanes = img.shape[2]
+            ns = n * numPlanes
 
-            print "This part of the code is still under development"
-            
-            yoff, xoff, zoff = np.meshgrid( range(patchSize[0]), range(patchSize[1]), range(A.shape[2]), indexing='ij' )
+            yoff, xoff = np.meshgrid( range(patchSize[0]), range(patchSize[1]), indexing='ij' )
             xoff = np.reshape( xoff - patchSize[1]/2, n )
             yoff = np.reshape( yoff - patchSize[0]/2, n )
-            mz = A.shape[2]/2
-            zoff = np.reshape( zoff - A.shape[2]/2, n )
-            #zoff = np.reshape( zoff, n )
-            #print xoff
-            #print yoff
-            print zoff
 
-
-            C = np.zeros([n,n])
-            
             # vectorized version of the below written non-vectorized version
             e = np.ones([n,1])
             xd = np.outer( xoff, e.T ) - np.outer( e, xoff.T )
-            #print xd
             xd = np.reshape ( xd+mx, n*n )
             yd = np.outer( yoff, e.T ) - np.outer( e, yoff.T )
-            #print yd
             yd = np.reshape ( yd+my, n*n )
-            zd = np.outer( zoff, e.T ) - np.outer( e, zoff.T )
-            print zd
-            zd = np.reshape ( zd+mz, n*n )
-            zd[zd>=A.shape[2]] = zd[zd>=A.shape[2]] - A.shape[2]
-            print zd
+            
+            C = np.zeros([ns,ns])
+            
+            # some indices to access a submatrix
+            iC, jC = np.meshgrid( range(n), range(n), indexing='ij' )
+            # loop through all planes to obtain the correlations WITHIN each plane 
+            for z in range(numPlanes):
+                # compute auto-correlation
+                A = self.computePowerSpec(img[:,:,z])
+                # ... and rearrange values                
+                C[iC + z*n, jC + z*n] = np.reshape ( np.real(A[np.int_(yd),np.int_(xd)]), [n, n] )
 
-            print A.shape
-            # BUG: zd might be not correct
-            # There is something wrong here, the above equation is somehow weird, don't you think?
-            # And the results do not match
-            C = np.reshape ( np.real(A[np.int_(yd),np.int_(xd),np.int_(zd)]), [n, n] )
+            # divide by the number of pixels
+            C = C / np.prod(A.shape)
 
-
-            # non-vectorized version
-            #for i1 in range(n):
-            #    C[i1,i1] = np.real( A[mx,my,mz] )
-            #    for i2 in range(i1+1,n):
-            #        xd = xoff[i1] - xoff[i2]
-            #        yd = yoff[i1] - yoff[i2]
-            #        zd = zoff[i1] - zoff[i2]
-            #        print zd
-            #        print mz
-            #        C[i1,i2] = np.real(A[mx+xd,my+yd,mz+zd])
-            #        C[i2,i1] = C[i1,i2]
-                     
+            if approximation_method == "kronecker_approximation":
+                F = np.transpose( img, (2, 0, 1) )
+                V = np.reshape( F.ravel(), [3, img.shape[0]*img.shape[1]] )
+                planeC = np.dot( V, V.transpose() ) * (1.0/V.shape[1])
+                planeC[ range(planeC.shape[0]), range(planeC.shape[1]) ] = 0.0
+                O = np.ones( [n,n] )
+                print planeC
+                print np.kron( planeC, O )
+                C = C + np.kron( planeC, O )
 
 
             
         # return a block Toeplitz matrix
-        C = C / np.prod(A.shape)
         return C

@@ -154,7 +154,7 @@ class FeatureWhiteningInefficient:
                     elif ry[i] >= h:
                       ry[i] = ry[i] - h
 
-                rry, rrx, rrz = np.meshgrid(ry, rx, rz, indexing='ij')
+                rrz, rry, rrx = np.meshgrid(rz, ry, rx, indexing='ij')
 
                 v = np.reshape( img[rry,rrx,rrz], n )
 
