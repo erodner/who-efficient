@@ -14,6 +14,6 @@ class Timer:
     def __exit__(self, type, value, traceback):
         if self.name:
             print '[%s]' % self.name,
-        print 'Elapsed: %.2f' % self.elapsed()
+        print 'Elapsed: %.5f' % self.elapsed()
 
 
