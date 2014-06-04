@@ -5,11 +5,7 @@ from timer import Timer
 from featwhitening import FeatureWhitening
 from featwhitening_inefficient import FeatureWhiteningInefficient
 
-
-def relativeError ( A, B ):
-    D = A - B
-    err = np.sum ( np.abs(D), axis=None ) / ( np.sum(np.abs(B),axis=None)+1e-5)
-    return err
+from exptools import relativeError
 
 
 ####### MAIN
