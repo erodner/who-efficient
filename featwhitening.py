@@ -97,10 +97,10 @@ class FeatureWhitening:
             #      C[i2,i1] = C[i1,i2]
         
         else:
+           
             # multiple plane case
             numPlanes = img.shape[2]
             ns = n * numPlanes
-
             yoff, xoff = np.meshgrid( range(patchSize[0]), range(patchSize[1]), indexing='ij' )
             xoff = np.reshape( xoff - patchSize[1]/2, n )
             yoff = np.reshape( yoff - patchSize[0]/2, n )
@@ -111,30 +111,50 @@ class FeatureWhitening:
             xd = np.reshape ( xd+mx, n*n )
             yd = np.outer( yoff, e.T ) - np.outer( e, yoff.T )
             yd = np.reshape ( yd+my, n*n )
-            
+                
             C = np.zeros([ns,ns])
-            
-            # some indices to access a submatrix
+
+            # some indices to simply access a submatrix
             iC, jC = np.meshgrid( range(n), range(n), indexing='ij' )
-            # loop through all planes to obtain the correlations WITHIN each plane 
-            for z in range(numPlanes):
-                # compute auto-correlation
-                A = self.computePowerSpec(img[:,:,z])
-                # ... and rearrange values                
-                C[iC + z*n, jC + z*n] = np.reshape ( np.real(A[np.int_(yd),np.int_(xd)]), [n, n] )
 
-            # divide by the number of pixels
-            C = C / np.prod(A.shape)
+            if approximation_method != "none":
+                            
+                # loop through all planes to obtain the correlations WITHIN each plane 
+                for z in range(numPlanes):
+                    # compute auto-correlation
+                    A = self.computePowerSpec(img[:,:,z])
+                    # ... and rearrange values                
+                    C[iC + z*n, jC + z*n] = np.reshape ( np.real(A[np.int_(yd),np.int_(xd)]), [n, n] )
 
-            if approximation_method == "kronecker_approximation":
-                F = np.transpose( img, (2, 0, 1) )
-                V = np.reshape( F.ravel(), [3, img.shape[0]*img.shape[1]] )
-                planeC = np.dot( V, V.transpose() ) * (1.0/V.shape[1])
-                planeC[ range(planeC.shape[0]), range(planeC.shape[1]) ] = 0.0
-                O = np.ones( [n,n] )
-                print planeC
-                print np.kron( planeC, O )
-                C = C + np.kron( planeC, O )
+                # divide by the number of pixels
+                C = C / np.prod(A.shape)
+
+                if approximation_method == "kronecker_approximation":
+                    F = np.transpose( img, (2, 0, 1) )
+                    V = np.reshape( F.ravel(), [3, img.shape[0]*img.shape[1]] )
+                    planeC = np.dot( V, V.transpose() ) * (1.0/V.shape[1])
+                    planeC[ range(planeC.shape[0]), range(planeC.shape[1]) ] = 0.0
+                    O = np.ones( [n,n] )
+                    print planeC
+                    print np.kron( planeC, O )
+                    C = C + np.kron( planeC, O )
+            else:
+                # precompute fourier transformations of each plane
+                ft = []
+                for z in range(numPlanes):
+                    ft.append(np.fft.fft2(img[:,:,z]))
+
+                # now we need to compute the correlations between planes 
+                for z1 in range(numPlanes):
+                    ft1 = ft[z1]
+                    for z2 in range(z1,numPlanes):
+                        ft2 = ft[z2]
+                        powerspec = np.multiply( np.conjugate(ft1), ft2 )
+                        A = np.fft.fftshift( np.fft.ifft2(powerspec) )
+                        C[iC + z1*n, jC + z2*n] = np.reshape ( np.real(A[np.int_(yd),np.int_(xd)]), [n, n] )
+                        C[iC + z2*n, jC + z1*n] = C[iC + z1*n, jC + z2*n] 
+   
+                C = C / np.prod(A.shape)
 
 
             

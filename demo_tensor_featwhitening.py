@@ -46,7 +46,7 @@ with Timer('Non-Fourier Patch Correlation (trivial)') as t:
 
 fw = FeatureWhitening() 
 with Timer('FFT Patch Correlation') as t:
-    C_eff = fw.getPatchCorrelation(img,patchSize,approximation_method="kronecker_approximation")
+    C_eff = fw.getPatchCorrelation(img,patchSize,approximation_method="none")
 
 max_display_size = min([C_eff.shape[0], 9])
 print "correlation matrix (efficient)"
