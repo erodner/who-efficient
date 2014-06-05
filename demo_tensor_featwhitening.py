@@ -22,6 +22,7 @@ parser.add_argument('--psx', help='patch width', default=3, type=int)
 parser.add_argument('--psy', help='patch height', default=1, type=int)
 parser.add_argument('--hog', help='compute HOG features of the image, instead of simple RGB (requires pyhog)', action='store_true')
 parser.add_argument('--approx', help='approximation method (kronecker_approximation, independent_planes, none)', default='none')
+parser.add_argument('--skiptriv', help='skip trivial version', action='store_true')
 args = parser.parse_args()
 
 imgraw = pylab.imread(args.image)
@@ -37,9 +38,13 @@ if not args.hog:
     print "Average grayvalue: %f" % (np.mean(imgraw,axis=None))
 
     img = np.zeros(imgraw.shape)
-    img[:,:,0] = (imgraw[:,:,0] - np.mean(imgraw[:,:,0],axis=None)) / 255.0
-    img[:,:,1] = (imgraw[:,:,1] - np.mean(imgraw[:,:,1],axis=None)) / 255.0
-    img[:,:,2] = (imgraw[:,:,2] - np.mean(imgraw[:,:,2],axis=None)) / 255.0
+    if img.ndim==3:
+        img[:,:,0] = (imgraw[:,:,0] - np.mean(imgraw[:,:,0],axis=None)) / 255.0
+        img[:,:,1] = (imgraw[:,:,1] - np.mean(imgraw[:,:,1],axis=None)) / 255.0
+        img[:,:,2] = (imgraw[:,:,2] - np.mean(imgraw[:,:,2],axis=None)) / 255.0
+    else:
+        img = (imgraw - np.mean(imgraw,axis=None)) / 255.0
+
 else:
     # use HOG image
     img = pyhog.features_pedro(imgraw, 8)
@@ -59,12 +64,13 @@ with Timer('FFT Patch Correlation') as t:
 
 fwi = FeatureWhiteningInefficient() 
 with Timer('Non-Fourier Patch Correlation (Hariharan)') as t:
-    C_ineff = fwi.getPatchCorrelation(img,patchSize)
+    C_ineff = fwi.getPatchCorrelationHariharan(img,patchSize)
     times.append(t.elapsed())
 
-with Timer('Non-Fourier Patch Correlation (trivial)') as t:
-    C_triv = fwi.getPatchCorrelationTrivial(img,patchSize)
-    times.append(t.elapsed())
+if not args.skiptriv:
+    with Timer('Non-Fourier Patch Correlation (trivial)') as t:
+        C_triv = fwi.getPatchCorrelationTrivial(img,patchSize)
+        times.append(t.elapsed())
 
 
 

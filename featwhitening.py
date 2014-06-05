@@ -5,6 +5,7 @@ import scipy.ndimage.filters
 import scipy.signal as signal
 import numpy.linalg as linalg
 import pylab
+import exptools
 
 from timer import Timer
 
@@ -130,8 +131,8 @@ class FeatureWhitening:
                 C = C / np.prod(A.shape)
 
                 if approximation_method == "kronecker_approximation":
-                    F = np.transpose( img, (2, 0, 1) )
-                    V = np.reshape( F.ravel(), [3, img.shape[0]*img.shape[1]] )
+                    F = np.transpose( img, [2, 0, 1] )
+                    V = np.reshape( F.ravel(), [img.shape[2], img.shape[0]*img.shape[1]] )
                     planeC = np.dot( V, V.transpose() ) * (1.0/V.shape[1])
                     planeC[ range(planeC.shape[0]), range(planeC.shape[1]) ] = 0.0
                     O = np.ones( [n,n] )
@@ -143,13 +144,14 @@ class FeatureWhitening:
                 ft = []
                 for z in range(numPlanes):
                     ft.append(np.fft.fft2(img[:,:,z]))
+            
 
                 # now we need to compute the correlations between planes 
                 for z1 in range(numPlanes):
-                    ft1 = ft[z1]
+                    ft1c = np.conjugate(ft[z1])
                     for z2 in range(z1,numPlanes):
                         ft2 = ft[z2]
-                        powerspec = np.multiply( np.conjugate(ft1), ft2 )
+                        powerspec = np.multiply( ft1c, ft2 )
                         A = np.fft.fftshift( np.fft.ifft2(powerspec) )
                         C[iC + z1*n, jC + z2*n] = np.reshape ( np.real(A[np.int_(yd),np.int_(xd)]), [n, n] )
                         C[iC + z2*n, jC + z1*n] = C[iC + z1*n, jC + z2*n] 
