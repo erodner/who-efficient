@@ -44,18 +44,29 @@ else:
     # use HOG image
     img = pyhog.features_pedro(imgraw, 8)
     
+print "Dimensions of the image: ", img.shape
 
 patchSize = np.array([args.psy, args.psx])
 
 np.set_printoptions( precision = 4 )
 
-fwi = FeatureWhiteningInefficient() 
-with Timer('Non-Fourier Patch Correlation (trivial)') as t:
-    C_ineff = fwi.getPatchCorrelationTrivial(img,patchSize)
+times = []
 
 fw = FeatureWhitening() 
 with Timer('FFT Patch Correlation') as t:
     C_eff = fw.getPatchCorrelation(img,patchSize,approximation_method=args.approx)
+    times.append(t.elapsed())
+
+fwi = FeatureWhiteningInefficient() 
+with Timer('Non-Fourier Patch Correlation (Hariharan)') as t:
+    C_ineff = fwi.getPatchCorrelation(img,patchSize)
+    times.append(t.elapsed())
+
+with Timer('Non-Fourier Patch Correlation (trivial)') as t:
+    C_triv = fwi.getPatchCorrelationTrivial(img,patchSize)
+    times.append(t.elapsed())
+
+
 
 max_display_size = min([C_eff.shape[0], 9])
 print "correlation matrix (efficient)"

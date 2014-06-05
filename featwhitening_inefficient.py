@@ -13,6 +13,10 @@ from timer import Timer
 """
 class FeatureWhiteningInefficient:
 
+    """ 
+        performs image whitening with the inverse correlation matrix
+        (still in an experimental stage and therefore a bit clumpsy)
+    """
     def whitenImage(self,img,patchSize,C):
         w = img.shape[1]
         h = img.shape[0]
@@ -50,6 +54,8 @@ class FeatureWhiteningInefficient:
 
         return wimg
 
+    """ obtain the patch correlation matrix using a similar technique
+        as the one of Barath Hariharan and Jitendra Malik """
     def getPatchCorrelation(self,img,patchSize):
         h = img.shape[0]
         w = img.shape[1]
@@ -58,14 +64,21 @@ class FeatureWhiteningInefficient:
         ps = np.int_(np.floor(np.multiply(patchSize,0.5)))
 
         vC = np.zeros([patchSize[0], patchSize[1]+2*ps[1]])
+
+        # the following algorithm is a O(n m) algorithm when
+        # n is the number of pixels in the image and m is the number
+        # of pixels in a patch (determined by patchSize)
         for (y,x),value in np.ndenumerate(img):
+            # bounds for the patch, xs can be negative
             xs = x-int(patchSize[1])+1
             xe = x+int(patchSize[1])
             ye = y+int(patchSize[0])
 
+            # possible x,y for the patch (might be out-of-bounds for x)
             rx = range(xs,xe)
             ry = range(y,ye)
 
+            # incorporate the cyclic model
             for i in range(len(rx)):
                 if rx[i] < 0:
                     rx[i] = rx[i] + w
@@ -77,10 +90,12 @@ class FeatureWhiteningInefficient:
                   ry[i] = ry[i] - h
 
             rry, rrx = np.meshgrid(ry, rx, indexing='ij')
-               
+              
+            # correlation of the "center" pixel with all it's neighbors
             vC = vC + img[rry,rrx] * value
             
-            
+        # vC contains the correlations between different shifts (similar to Gamma used in the original paper)
+        # we now rewrite this to a proper patch correlation matrix
         yoff, xoff = np.meshgrid(range(-ps[0],ps[0]+1), range(-ps[1],ps[1]+1), indexing='ij')
         xoff = np.reshape(xoff,n)
         yoff = np.reshape(yoff,n)
