@@ -7,6 +7,7 @@ from featwhitening import FeatureWhitening
 from featwhitening_inefficient import FeatureWhiteningInefficient
 from exptools import relativeError
 import re
+import gc
 
 try:
     import pyhog
@@ -23,6 +24,7 @@ parser.add_argument('--ps', help='patch size (syntax wxh or s1:inc:s2)', default
 parser.add_argument('--hog', help='compute HOG features of the image, instead of simple RGB (requires pyhog)', action='store_true')
 parser.add_argument('--approx', help='approximation method (kronecker_approximation, independent_planes, none)', default='none')
 parser.add_argument('--skiptriv', help='skip trivial version', action='store_true')
+parser.add_argument('--skipc', help='skip C calculation', action='store_true')
 parser.add_argument('--writestats', help='write statistics', action='store_true')
 parser.add_argument('--statsfile', help='output file for statistics', default='times')
 args = parser.parse_args()
@@ -77,16 +79,17 @@ if args.writestats:
 
 for i in range( patchSizes.shape[0] ):
     patchSize = np.int_(patchSizes[i,:].ravel())
+    print "patch size: ", patchSize
     times = []
 
     fw = FeatureWhitening() 
     with Timer('FFT Patch Correlation') as t:
-        C_eff = fw.getPatchCorrelation(img,patchSize,approximation_method=args.approx)
+        C_eff = fw.getPatchCorrelation(img,patchSize,approximation_method=args.approx,timing_skip_C=args.skipc)
         times.append(t.elapsed())
 
     fwi = FeatureWhiteningInefficient() 
     with Timer('Non-Fourier Patch Correlation (Hariharan)') as t:
-        C_ineff = fwi.getPatchCorrelationHariharan(img,patchSize)
+        C_ineff = fwi.getPatchCorrelationHariharan(img,patchSize,timing_skip_C=args.skipc)
         times.append(t.elapsed())
 
     if not args.skiptriv:
@@ -94,15 +97,19 @@ for i in range( patchSizes.shape[0] ):
             C_triv = fwi.getPatchCorrelationTrivial(img,patchSize)
             times.append(t.elapsed())
 
-    max_display_size = min([C_eff.shape[0], 9])
-    print "correlation matrix (efficient)"
-    print C_eff[0:max_display_size][:,0:max_display_size]
-    print "correlation matrix (inefficient)"
-    print C_ineff[0:max_display_size][:,0:max_display_size]
-        
-    e = relativeError( C_eff, C_ineff )
-    print "Relative error:", e
-    print "Relative error (ignoring zeros):", relativeError( C_eff, C_ineff, ignore_zeros=True ) 
+    
+    if not args.skipc:
+        max_display_size = min([C_eff.shape[0], 9])
+        print "correlation matrix (efficient)"
+        print C_eff[0:max_display_size][:,0:max_display_size]
+        print "correlation matrix (inefficient)"
+        print C_ineff[0:max_display_size][:,0:max_display_size]
+
+        e = relativeError( C_eff, C_ineff )
+        print "Relative error:", e
+        print "Relative error (ignoring zeros):", relativeError( C_eff, C_ineff, ignore_zeros=True ) 
+    else:
+        e = 0
 
     if args.writestats:
         fout.write('%d %d %f %f %f\n' % (patchSize[0], patchSize[1], times[0], times[1], e))

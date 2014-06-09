@@ -56,7 +56,7 @@ class FeatureWhiteningInefficient:
 
     """ obtain the patch correlation matrix using a similar technique
         as the one of Barath Hariharan and Jitendra Malik """
-    def getPatchCorrelationHariharan(self,img,patchSize):
+    def getPatchCorrelationHariharan(self,img,patchSize,timing_skip_C=False):
         if img.ndim == 2:
             img = np.reshape(img, [img.shape[0], img.shape[1], 1])
         
@@ -120,37 +120,36 @@ class FeatureWhiteningInefficient:
             cov[:,:,i] = cov[:,:,i] / ns[i]
 
         # now convert the cov structure into a proper correlation matrix
-        n  = w*h
-        D  = np.zeros([c,c,n,n])
+        C = None
+        if not timing_skip_C:
+            n  = w*h
+            D  = np.zeros([c,c,n,n])
 
-        for x1 in range(w):
-            for y1 in range(h):
-                #i1 = x1*h + y1
-                i1 = y1*w + x1
-                for i in range(k):
-                    x = dxy[i][0]
-                    y = dxy[i][1]
-                    x2 = x1 + x
-                    y2 = y1 + y
-                    if x2 >= 0 and x2 < w and y2 >= 0 and y2 < h:
-                        #i2 = x2*h + y2;
-                        i2 = y2*w + x2;
-                        D[:,:,i1,i2] = cov[:,:,i]
-                    
-                    x2 = x1 - x
-                    y2 = y1 - y
-                    if x2 >= 0 and x2 < w and y2 >= 0 and y2 < h:
-                        #i2 = x2*h + y2
-                        i2 = y2*w + x2
-                        D[:,:,i1,i2] = cov[:,:,i].T
+            for x1 in range(w):
+                for y1 in range(h):
+                    #i1 = x1*h + y1
+                    i1 = y1*w + x1
+                    for i in range(k):
+                        x = dxy[i][0]
+                        y = dxy[i][1]
+                        x2 = x1 + x
+                        y2 = y1 + y
+                        if x2 >= 0 and x2 < w and y2 >= 0 and y2 < h:
+                            #i2 = x2*h + y2;
+                            i2 = y2*w + x2;
+                            D[:,:,i1,i2] = cov[:,:,i]
+                        
+                        x2 = x1 - x
+                        y2 = y1 - y
+                        if x2 >= 0 and x2 < w and y2 >= 0 and y2 < h:
+                            #i2 = x2*h + y2
+                            i2 = y2*w + x2
+                            D[:,:,i1,i2] = cov[:,:,i].T
 
-        # Permute [c c n n] to [n c n c]
-        #D = np.transpose(D,[2, 0, 3, 1])
-        # Permute [c c n n] to [n n c c]
-        #D = np.transpose(D,[2, 3, 0, 1])
-        # Permute [c c n n] to [c n c n]
-        Dt = np.transpose(D,[0, 2, 1, 3])
-        C = np.reshape(Dt,[n*c,n*c])
+            # Permute [c c n n] to [c n c n]
+            # NOTE: we use a different order as in the original code
+            Dt = np.transpose(D,[0, 2, 1, 3])
+            C = np.reshape(Dt,[n*c,n*c])
         
         return C
 
